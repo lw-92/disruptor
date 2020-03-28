@@ -120,26 +120,32 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
         {
             throw new IllegalArgumentException("n must be > 0 and < bufferSize");
         }
-
+        // 复制上次申请完毕的序列值
         long nextValue = this.nextValue;
-
+        // 加n，得到本次需要申请的序列值，单个发送n为1
         long nextSequence = nextValue + n;
+        // 可能发生绕环的点，本次申请值 - 一圈长度
         long wrapPoint = nextSequence - bufferSize;
-        long cachedGatingSequence = this.cachedValue;
-
+        long cachedGatingSequence = this.cachedValue; // 数值最小的序列值，也就是最慢消费者，因为获取频繁的去获取整个值很慢
+        // wrapPoint 等于 cachedGatingSequence 将发生绕环行为，生产者将在环上，从后方覆盖未消费的事件。
+        // 如果即将生产者超一圈从后方追消费者尾（要申请的序号落了最慢消费者一圈）或 消费者追生产者尾，将进行等待。后边这种情况应该不会发生吧？
+        // 针对以上值举例：400米跑道(bufferSize)，小明跑了599米(nextSequence)，小红(最慢消费者)跑了200米(cachedGatingSequence)。小红不动，小明再跑一米就撞翻小红的那个点，叫做绕环点wrapPoint。
+        // 没有空坑位，将进入循环等待。
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > nextValue)
         {
             cursor.setVolatile(nextValue);  // StoreLoad fence
 
             long minSequence;
+            // 只有当消费者消费，向前移动后，才能跳出循环
+            // 由于外层判断使用的是缓存的消费者序列最小值，这里使用真实的消费者序列进行判断，并将最新结果在跳出while循环之后进行缓存
             while (wrapPoint > (minSequence = Util.getMinimumSequence(gatingSequences, nextValue)))
             {
                 LockSupport.parkNanos(1L); // TODO: Use waitStrategy to spin?
             }
-
+            // 当消费者向前消费后，更新缓存的最小序号
             this.cachedValue = minSequence;
         }
-
+        // 将成功申请的序号赋值给对象实例变量
         this.nextValue = nextSequence;
 
         return nextSequence;
