@@ -55,7 +55,7 @@ final class ProcessingSequenceBarrier implements SequenceBarrier {
     public long waitFor(final long sequence)
             throws AlertException, InterruptedException, TimeoutException {
         checkAlert();
-        ////调用消费者的waitStrategy来等待sequence变得可用
+        ////调用消费者的waitStrategy来等待sequence变得可用，这里会等待依赖的序列能处理完毕之后再处理
         long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, this);
           //判断申请的序列和可用的序列大小
         if (availableSequence < sequence) {
