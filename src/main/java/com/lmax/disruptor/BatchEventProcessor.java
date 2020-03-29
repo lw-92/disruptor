@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * If the {@link EventHandler} also implements {@link LifecycleAware} it will be notified just after the thread
  * is started and just before the thread is shutdown.
+ * event模式单线程处理
  *
  * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an event.
  */
@@ -104,17 +105,22 @@ public final class BatchEventProcessor<T>
      */
     @Override
     public void run() {
-        // 这里是真正的去消费者的代码，获取数据
+        // //启动任务
         if (running.compareAndSet(IDLE, RUNNING)) {
+            ////清除中断状态
             sequenceBarrier.clearAlert();
-
+//判断一下消费者是否实现了LifecycleAware ,如果实现了这个接口，那么此时会发送一个启动通知
             notifyStart();
             try {
+                //判断任务是否启动
                 if (running.get() == RUNNING) {
+                    //处理事件
                     processEvents();
                 }
             } finally {
+                //判断一下消费者是否实现了LifecycleAware ,如果实现了这个接口，那么此时会发送一个停止通知
                 notifyShutdown();
+                //重新设置状态
                 running.set(IDLE);
             }
         } else {
@@ -124,6 +130,7 @@ public final class BatchEventProcessor<T>
             if (running.get() == RUNNING) {
                 throw new IllegalStateException("Thread is already running");
             } else {
+                //这里就是  notifyStart();notifyShutdown();
                 earlyExit();
             }
         }
@@ -131,24 +138,24 @@ public final class BatchEventProcessor<T>
 
     private void processEvents() {
         T event = null;
+        //获取要申请的序列
         long nextSequence = sequence.get() + 1L;
         //在死循环中去处理
         while (true) {
             try {
                 ////从RingBuffer中获取一批可以处理的事件的seq，策略由之前设置的waitStrategy决定，返回的seq可能会大于nextSequence（批量，提高效率）
-
                 final long availableSequence = sequenceBarrier.waitFor(nextSequence);
                 if (batchStartAware != null && availableSequence >= nextSequence) {
                     batchStartAware.onBatchStart(availableSequence - nextSequence + 1);
                 }
 
-                 //在循环中消耗返回的availableSequence
+                // 根据可用的序列值获取事件。批量处理nextSequence到availableSequence之间的事件。
                 while (nextSequence <= availableSequence) {
                     event = dataProvider.get(nextSequence);
                     eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
                     nextSequence++;
                 }
-                 //这一批seq消耗完了，更新当前消费者关联的sequence，让生产者可以知道，这里调用的是相对廉价的putOrderedLong方法，因为不需要很高的实时性
+                //这一批seq消耗完了，更新当前消费者关联的sequence，让生产者可以知道，这里调用的是相对廉价的putOrderedLong方法，因为不需要很高的实时性
                 sequence.set(availableSequence);
             } catch (final TimeoutException e) {
                 notifyTimeout(sequence.get());

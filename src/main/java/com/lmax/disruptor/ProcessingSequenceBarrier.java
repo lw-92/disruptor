@@ -22,9 +22,18 @@ package com.lmax.disruptor;
  */
 final class ProcessingSequenceBarrier implements SequenceBarrier {
     private final WaitStrategy waitStrategy;
+    //当消费者之前没有依赖关系的时候，那么dependentSequence=cursorSequence
+    //存在依赖关系的时候，dependentSequence 里存放的是一组依赖的Sequence，get方法得到的是最小的序列值
+    //所谓的依赖关系是有两个消费者A、B，其中B需要在A之后进行消费，这A的序列就是B需要依赖的序列，因为B的消费速度不能超过A
     private final Sequence dependentSequence;
     private volatile boolean alerted = false;
+    /**
+     * cursorSequence 代表的是写指针。代表事件发布者发布到那个位置
+     */
     private final Sequence cursorSequence;
+    /**
+     * sequencer=SingleProducerSequencer or MultiProducerSequencer的引用
+     */
     private final Sequencer sequencer;
 
     ProcessingSequenceBarrier(
@@ -48,11 +57,12 @@ final class ProcessingSequenceBarrier implements SequenceBarrier {
         checkAlert();
         ////调用消费者的waitStrategy来等待sequence变得可用
         long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, this);
-
+          //判断申请的序列和可用的序列大小
         if (availableSequence < sequence) {
             return availableSequence;
         }
-
+        //如果是单线程生产者直接返回availableSequence
+        //多线程生产者判断是否可用，不可用返回sequence-1
         return sequencer.getHighestPublishedSequence(sequence, availableSequence);
     }
 
