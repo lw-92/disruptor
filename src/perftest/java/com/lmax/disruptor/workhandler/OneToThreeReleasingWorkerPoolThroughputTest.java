@@ -63,10 +63,10 @@ public final class OneToThreeReleasingWorkerPoolThroughputTest
 
     private final WorkerPool<ValueEvent> workerPool =
         new WorkerPool<ValueEvent>(
-            ringBuffer,
-            ringBuffer.newBarrier(),
-            new FatalExceptionHandler(),
-            handlers);
+                ringBuffer,
+                ringBuffer.newBarrier(),
+                new FatalExceptionHandler(),
+                handlers);
 
     {
         ringBuffer.addGatingSequences(workerPool.getWorkerSequences());

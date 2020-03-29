@@ -28,14 +28,14 @@ public interface Sequencer extends Cursored, Sequenced
     /**
      * Claim a specific sequence.  Only used if initialising the ring buffer to
      * a specific value.
-     *
+     *初始化RingBuffer为指定的sequence
      * @param sequence The sequence to initialise too.
      */
     void claim(long sequence);
 
     /**
      * Confirms if a sequence is published and the event is available for use; non-blocking.
-     *
+     * 消费者调用，判断sequence是否可以消费
      * @param sequence of the buffer to check
      * @return true if the sequence is available for use, false if not
      */
@@ -44,14 +44,14 @@ public interface Sequencer extends Cursored, Sequenced
     /**
      * Add the specified gating sequences to this instance of the Disruptor.  They will
      * safely and atomically added to the list of gating sequences.
-     *
+     * 将sequence添加到gating sequences中
      * @param gatingSequences The sequences to add.
      */
     void addGatingSequences(Sequence... gatingSequences);
 
     /**
      * Remove the specified sequence from this sequencer.
-     *
+     *从gating sequences中移除指定的sequence
      * @param sequence to be removed.
      * @return <code>true</code> if this sequence was found, <code>false</code> otherwise.
      */
@@ -60,7 +60,7 @@ public interface Sequencer extends Cursored, Sequenced
     /**
      * Create a new SequenceBarrier to be used by an EventProcessor to track which messages
      * are available to be read from the ring buffer given a list of sequences to track.
-     *
+     *事件处理者用来追踪ringBuffer中可以用的sequence
      * @param sequencesToTrack All of the sequences that the newly constructed barrier will wait on.
      * @return A sequence barrier that will track the specified sequences.
      * @see SequenceBarrier
@@ -70,7 +70,7 @@ public interface Sequencer extends Cursored, Sequenced
     /**
      * Get the minimum sequence value from all of the gating sequences
      * added to this ringBuffer.
-     *
+     * 事件发布者获取gating sequence中最小的sequence
      * @return The minimum gating sequence or the cursor sequence if
      * no sequences have been added.
      */
@@ -84,6 +84,7 @@ public interface Sequencer extends Cursored, Sequenced
      * <code>nextSequence - 1</code>.  To work correctly a consumer should pass a value that
      * is 1 higher than the last sequence that was successfully processed.
      *
+     *消费者用来获取从nextSequence到availableSequence之间最大的sequence。如果是多线程生产者判断nextSequence是否可用，否则返回nextSequence-1。单线程直接返回availableSequence
      * @param nextSequence      The sequence to start scanning from.
      * @param availableSequence The sequence to scan to.
      * @return The highest value that can be safely read, will be at least <code>nextSequence - 1</code>.

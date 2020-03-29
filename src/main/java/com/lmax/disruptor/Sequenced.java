@@ -28,6 +28,7 @@ public interface Sequenced
     /**
      * Claim the next event in sequence for publishing.
      *
+     *  申请下一个sequence，用于事件发布者发布数据，申请失败则自旋
      * @return the claimed sequence value
      */
     long next();
@@ -44,7 +45,7 @@ public interface Sequenced
      * }
      * sequencer.publish(lo, hi);
      * </pre>
-     *
+     * 申请下一个sequence，用于事件发布者发布数据，申请失败则自旋
      * @param n the number of sequences to claim
      * @return the highest claimed sequence value
      */
