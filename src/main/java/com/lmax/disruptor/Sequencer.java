@@ -91,5 +91,12 @@ public interface Sequencer extends Cursored, Sequenced
      */
     long getHighestPublishedSequence(long nextSequence, long availableSequence);
 
+    /**
+     * todo  I don't know how is it work
+     * @param provider
+     * @param gatingSequences
+     * @param <T>
+     * @return
+     */
     <T> EventPoller<T> newPoller(DataProvider<T> provider, Sequence... gatingSequences);
 }
